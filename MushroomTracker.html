@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pikmin Bloom Mushroom Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css">
+    <style>
+        :root {
+            --primary-bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --accent-color: #007aff;
+            --danger-color: #ff3b30;
+            --success-color: #34c759;
+            --text-main: #1d1d1f;
+            --text-muted: #86868b;
+        }
+
+        body {
+            background-color: var(--primary-bg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+            padding-bottom: 50px;
+        }
+
+        .animate-pulse {
+            animation: pulse-op 1.5s infinite;
+        }
+        @keyframes pulse-op {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        .header-title {
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+            padding-top: 0.5rem;
+            font-size: 2rem;
+        }
+
+        .input-section {
+            background-color: var(--card-bg);
+            border-radius: 18px;
+            padding: 1rem;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.04);
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 20px;
+        }
+
+        .location-input-group {
+            display: grid;
+            grid-template-columns: 85px 1fr auto auto;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 2px 10px;
+            border-radius: 8px;
+            background: #fbfbfd;
+            transition: transform 0.2s;
+        }
+
+        .location-input-group:hover {
+            transform: translateX(4px);
+        }
+
+        .location-name {
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+
+        .form-control-custom {
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            background: #fff;
+        }
+
+        .form-control-custom:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px rgba(0,122,255,0.1);
+        }
+
+        .display-section-container h2 {
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .display-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .timer-card {
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border: 2px solid transparent;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .close-card {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.05);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .close-card:hover {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .timer-card.finished .close-card {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .timer-card .location-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+        }
+
+        .timer-card .countdown-value {
+            font-size: 2.8rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-main);
+            line-height: 1;
+            letter-spacing: -0.05em;
+        }
+
+        .timer-card.near-zero {
+            border-color: var(--danger-color);
+            animation: pulse-danger 0.8s infinite alternate;
+        }
+
+        .timer-card.finished {
+            background: linear-gradient(135deg, #34c759 0%, #28a745 100%);
+            border-color: transparent;
+            transform: scale(1.02);
+        }
+
+        .timer-card.finished .location-title { color: rgba(255,255,255,0.8); }
+        .timer-card.finished .countdown-value { color: #fff; }
+
+        @keyframes pulse-danger {
+            from { background-color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+            to { background-color: #fff1f0; box-shadow: 0 4px 30px rgba(255,59,48,0.2); }
+        }
+
+        .btn-apple {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: opacity 0.2s;
+        }
+
+        .btn-apple:hover {
+            opacity: 0.85;
+            color: white;
+        }
+
+        .reset-link {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .reset-link:hover {
+            color: var(--danger-color);
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            background: rgba(0,0,0,0.02);
+            border: 2px dashed #d2d2d7;
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .audio-status {
+            font-size: 0.75rem;
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <h1 class="header-title text-center">Pikmin Bloom Mushroom Tracker</h1>
+    
+    <div class="row">
+        <!-- Input Section -->
+        <div class="col-lg-4">
+            <div class="input-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fs-4 m-0 fw-bold">輸入剩餘時間</h2>
+                    <div class="d-flex align-items-center gap-2">
+                        <span id="audio-tip" class="fw-bold text-danger animate-pulse" style="font-size: 1.1rem; display: block;">
+                            (請點擊畫面啟動音效)
+                        </span>
+                        <button id="mute-btn" class="btn btn-outline-primary btn-sm" onclick="toggleMute()" style="border-radius: 20px; font-size: 0.9rem; padding: 4px 12px; white-space: nowrap;">
+                            🔈 載入中...
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="input-instruction" class="alert alert-info py-1 px-3 mb-2" style="font-size: 0.85rem; border-radius: 10px; border: none; background-color: #f0f7ff;">
+                    <p class="mb-0 small"><strong>💡 提示：</strong> 2 位數一單位，範例: <code>5930</code> = 59分30秒</p>
+                </div>
+                
+                <div id="input-list">
+                    <!-- Javascript will populate this -->
+                </div>
+
+                <div class="audio-status text-muted mb-2 mt-3 d-flex align-items-center justify-content-end gap-2" style="font-size: 0.75rem;">
+                    <span id="audio-indicator" class="badge bg-secondary">音效未啟動</span>
+                    <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="playAlertSound(true)">測試音效</button>
+                    <span class="text-light-subtle">|</span>
+                    <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="testCountdown()">測試倒數 (10s)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Display Section -->
+        <div class="col-lg-8">
+            <div class="display-section-container">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="m-0">倒數計時</h2>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="clearAllMushrooms()" style="border-radius: 20px; font-size: 0.8rem;">
+                        關閉所有通知 / 清除全部
+                    </button>
+                </div>
+                <div id="timer-display" class="display-section">
+                    <!-- Javascript will populate this -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.min.js"></script>
+<script>
+    const locations = ["痌瘝在抱", "噴水池", "翠亨閣", "放送頭", "大廳武士", "台北車站", "郵局", "城隍廟"];
+    const ADD_TIME_SECONDS = 270; // 4 minutes 30 seconds 270
+    
+    // State
+    let mushrooms = {};
+    let audioCtx = null;
+    let isMuted = false;
+    
+    function init() {
+        locations.forEach(loc => {
+            mushrooms[loc] = {
+                targetTimestamp: null,
+                alerted: false
+            };
+        });
+        
+        const stored = localStorage.getItem('mushroom_countdowns_v2');
+        if (stored) {
+            const data = JSON.parse(stored);
+            Object.keys(data).forEach(key => {
+                if (mushrooms[key]) mushrooms[key].targetTimestamp = data[key].targetTimestamp;
+            });
+        }
+        
+        renderInputList();
+        setInterval(tick, 1000);
+        
+        // Resume AudioContext on first interaction
+        document.body.addEventListener('click', initAudio, { once: false });
+    }
+
+    function initAudio() {
+        if (!audioCtx) {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                updateAudioUI();
+            } catch (e) {
+                console.error("Audio initialization failed", e);
+            }
+        } else if (audioCtx.state === 'suspended') {
+            audioCtx.resume().then(updateAudioUI);
+        } else {
+            updateAudioUI();
+        }
+    }
+
+    function updateAudioUI() {
+        const tip = document.getElementById('audio-tip');
+        const btn = document.getElementById('mute-btn');
+        const indicator = document.getElementById('audio-indicator');
+        
+        if (!audioCtx || audioCtx.state !== 'running') {
+            tip.innerHTML = '(請點擊畫面啟動音效)';
+            tip.classList.add('text-danger', 'animate-pulse');
+            tip.classList.remove('text-success');
+            indicator.textContent = '音效未啟動';
+            indicator.className = 'badge bg-secondary';
+        } else {
+            tip.innerHTML = '(音效已就緒)';
+            tip.classList.remove('text-danger', 'animate-pulse');
+            tip.classList.add('text-success');
+            indicator.textContent = '音效已就緒';
+            indicator.className = 'badge bg-success';
+        }
+
+        if (isMuted) {
+            btn.innerHTML = '🔇 已靜音';
+            btn.className = 'btn btn-outline-danger btn-sm';
+        } else {
+            btn.innerHTML = '🔈 音效開啟中';
+            btn.className = 'btn btn-outline-primary btn-sm';
+        }
+    }
+
+    function renderInputList() {
+        const list = document.getElementById('input-list');
+        list.innerHTML = '';
+        
+        locations.forEach(loc => {
+            const group = document.createElement('div');
+            group.className = 'location-input-group';
+            
+            group.innerHTML = `
+                <div class="location-name">${loc}</div>
+                <input type="text" class="form-control-custom" placeholder="HHMMSS" id="input-${loc}" 
+                    maxlength="6"
+                    onkeydown="if(event.key === 'Enter') setMushroomTime('${loc}')">
+                <button class="btn-apple" onclick="setMushroomTime('${loc}')">設定</button>
+                <a class="reset-link" onclick="resetMushroom('${loc}')">重設</a>
+            `;
+            list.appendChild(group);
+        });
+    }
+
+    function setMushroomTime(loc) {
+        initAudio(); // Ensure audio context is active
+        const input = document.getElementById(`input-${loc}`);
+        const val = input.value.replace(/\D/g, ''); // Numeric only
+        if (!val) return;
+
+        // Parse: 2 digits per unit from right
+        let sStr = val.padStart(6, '0');
+        let hh = parseInt(sStr.slice(0, 2)) || 0;
+        let mm = parseInt(sStr.slice(2, 4)) || 0;
+        let ss = parseInt(sStr.slice(4, 6)) || 0;
+        
+        let totalSeconds = (hh * 3600) + (mm * 60) + ss;
+        
+        // Add 4:30
+        const target = Date.now() + ((totalSeconds + ADD_TIME_SECONDS) * 1000);
+        
+        mushrooms[loc].targetTimestamp = target;
+        mushrooms[loc].alerted = false;
+        
+        input.value = '';
+        saveState();
+        tick();
+    }
+    
+    function resetMushroom(loc) {
+        mushrooms[loc].targetTimestamp = null;
+        mushrooms[loc].alerted = false;
+        saveState();
+        tick();
+    }
+
+    function clearAllMushrooms() {
+        if (!confirm("確定要清除所有倒數通知嗎？")) return;
+        locations.forEach(loc => {
+            mushrooms[loc].targetTimestamp = null;
+            mushrooms[loc].alerted = false;
+        });
+        saveState();
+        tick();
+    }
+
+    function testCountdown() {
+        initAudio();
+        const randomLoc = locations[Math.floor(Math.random() * locations.length)];
+        const target = Date.now() + 10000; // 10 seconds
+        
+        mushrooms[randomLoc].targetTimestamp = target;
+        mushrooms[randomLoc].alerted = false;
+        
+        saveState();
+        tick();
+    }
+
+    function saveState() {
+        localStorage.setItem('mushroom_countdowns_v2', JSON.stringify(mushrooms));
+    }
+
+    function tick() {
+        const display = document.getElementById('timer-display');
+        const now = Date.now();
+        
+        let activeMushrooms = [];
+        locations.forEach(loc => {
+            if (mushrooms[loc].targetTimestamp) {
+                const diff = mushrooms[loc].targetTimestamp - now;
+                activeMushrooms.push({
+                    name: loc,
+                    diff: diff
+                });
+            }
+        });
+
+        // Sort by diff (ascending, so finished ones stay top if they are older? 
+        // Actually usually we want upcoming ones first, and finished ones together.
+        // Let's keep finished ones at the bottom of the upcoming ones or at the top.
+        // Standard: upcoming first (smallest diff > 0), then finished ones.
+        activeMushrooms.sort((a, b) => a.diff - b.diff);
+
+        display.innerHTML = '';
+        if (activeMushrooms.length === 0) {
+            display.innerHTML = '<div class="empty-state"><h3>目前沒有倒數任務</h3><p>請從左側輸入時間開始追蹤</p></div>';
+            return;
+        }
+
+        activeMushrooms.forEach(item => {
+            const isFinished = item.diff <= 0;
+            const absSeconds = Math.floor(Math.abs(item.diff) / 1000);
+            
+            const isPanicking = !isFinished && absSeconds < 60;
+            
+            const h = Math.floor(absSeconds / 3600);
+            const m = Math.floor((absSeconds % 3600) / 60);
+            const s = absSeconds % 60;
+            const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+            const battleSecondsLeft = Math.max(0, Math.floor(item.diff / 1000) - ADD_TIME_SECONDS);
+            const bh = Math.floor(battleSecondsLeft / 3600);
+            const bm = Math.floor((battleSecondsLeft % 3600) / 60);
+            const bs = battleSecondsLeft % 60;
+            const battleTimeStr = `${bh.toString().padStart(2, '0')}:${bm.toString().padStart(2, '0')}:${bs.toString().padStart(2, '0')}`;
+
+            const card = document.createElement('div');
+            card.className = `timer-card ${isPanicking ? 'near-zero' : ''} ${isFinished ? 'finished' : ''}`;
+            
+            card.innerHTML = `
+                <button class="close-card" title="刪除倒數" onclick="resetMushroom('${item.name}')">✕</button>
+                <div class="location-title">${item.name}</div>
+                ${!isFinished ? `
+                <div class="small text-muted mb-2" style="font-size: 0.8rem;">
+                    戰鬥剩餘: <span class="fw-bold text-secondary">${battleSecondsLeft > 0 ? battleTimeStr : '已結束'}</span>
+                </div>
+                ` : ''}
+                <div class="countdown-value">${isFinished ? '+' + timeStr : timeStr}</div>
+                ${isFinished ? `
+                <div class="small mb-2" style="opacity: 0.9;">已重生時間</div>
+                <div class="mt-3"><button class="btn btn-sm btn-light py-1 px-3" style="border-radius:20px; font-weight:600;" onclick="resetMushroom('${item.name}')">清空紀錄</button></div>
+                ` : ''}
+            `;
+            display.appendChild(card);
+            
+            if (isFinished && !mushrooms[item.name].alerted) {
+                playAlertSound();
+                mushrooms[item.name].alerted = true;
+            }
+        });
+    }
+
+    function playAlertSound(force = false) {
+        if (!audioCtx || (isMuted && !force)) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        const now = audioCtx.currentTime;
+        
+        // Helper to create a soft note
+        const playNote = (freq, startTime, duration, volume) => {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, startTime);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.01, startTime + duration); // Subtle vibrato
+            
+            g.gain.setValueAtTime(0, startTime);
+            g.gain.linearRampToValueAtTime(volume, startTime + 0.1); // Soft attack
+            g.gain.exponentialRampToValueAtTime(0.001, startTime + duration); // Long tail
+            
+            osc.connect(g);
+            g.connect(audioCtx.destination);
+            
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        };
+
+        // Play a soft major third chord (C5 and E5)
+        playNote(523.25, now, 1.5, 0.2); // C5
+        playNote(659.25, now + 0.1, 1.2, 0.15); // E5
+    }
+
+    function toggleMute() {
+        initAudio(); // Ensure audioCtx is enabled when user interacts with this
+        isMuted = !isMuted;
+        updateAudioUI();
+    }
+
+    window.onload = init;
+</script>
+
+
+</body>
+</html>

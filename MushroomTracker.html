@@ -248,6 +248,52 @@
             50% { transform: scale(1.4); }
             100% { transform: scale(1); }
         }
+
+        .modal-mission-table {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+        .modal-mission-table thead th {
+            background-color: var(--primary-bg);
+            border-bottom: 2px solid #dee2e6;
+            color: var(--text-main);
+            font-weight: 700;
+            padding: 12px;
+        }
+        .modal-mission-table th.stage-header {
+            background-color: #f8f9fa;
+            font-weight: 700;
+            color: var(--accent-color);
+            text-align: center;
+            vertical-align: middle;
+            border-right: 1px solid #dee2e6;
+            width: 100px;
+        }
+        .modal-mission-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .mission-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+        .mission-item:last-child {
+            margin-bottom: 0;
+        }
+        .mission-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--accent-color);
+            min-width: 35px;
+            font-size: 0.85rem;
+            margin-top: 1px;
+        }
+        .mission-text {
+            color: var(--text-main);
+        }
     </style>
 </head>
 <body>
@@ -279,11 +325,16 @@
                     <!-- Javascript will populate this -->
                 </div>
 
-                <div class="audio-status text-muted mb-2 mt-3 d-flex align-items-center justify-content-end gap-2" style="font-size: 0.75rem;">
-                    <span id="audio-indicator" class="badge bg-secondary">音效未啟動</span>
-                    <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="playAlertSound(true)">測試音效</button>
-                    <span class="text-light-subtle">|</span>
-                    <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="testCountdown()">測試倒數 (10s)</button>
+                <div class="audio-status text-muted mb-2 mt-3 d-flex align-items-center justify-content-between px-1" style="font-size: 0.75rem;">
+                    <div class="d-flex align-items-center gap-2">                        
+                        <button class="btn btn-link btn-sm p-0 text-decoration-none fw-bold" data-bs-toggle="modal" data-bs-target="#missionModal" style="color: var(--accent-color); font-size: 0.8rem;">[每月任務]</button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span id="audio-indicator" class="badge bg-secondary">音效未啟動</span>
+                        <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="playAlertSound(true)">測試音效</button>
+                        <span class="text-light-subtle">|</span>
+                        <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="testCountdown()">測試倒數 (10s)</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -576,6 +627,126 @@
     window.onload = init;
 </script>
 
+
+<!-- Mission Modal -->
+<div class="modal fade" id="missionModal" tabindex="-1" aria-labelledby="missionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="missionModalLabel" style="font-size: 1.25rem;">🌸 皮克敏每月任務(四月)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="table-responsive">
+                    <table class="table modal-mission-table">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width: 15%;">階段</th>
+                                <th style="width: 28%;">任務 1</th>
+                                <th style="width: 28%;">任務 2</th>
+                                <th style="width: 29%;">任務 3</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Stage 1 -->
+                            <tr>
+                                <th rowspan="4" class="stage-header">第 1 階段</th>
+                                <td><div class="mission-item"><span class="mission-num">1</span><span class="mission-text">走 1000 步</span></div></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">培育 2 隻皮克敏</span></div></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">完成 2 個探險</span></div></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 1000 朵花</span></div></td>
+                                <td><div class="mission-item"><span class="mission-text">摧毀 2 棵蘑菇</span></div>
+                                </td>
+                                <td></td>
+                            </tr>
+                            <!-- Stage 2 -->
+                            <tr>
+                                <th rowspan="4" class="stage-header">第 2 階段</th>
+                                <td><div class="mission-item"><span class="mission-num">1</span><span class="mission-text">走 2000 步</span></div></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 1000 朵花</span></div></td>
+                                <td><span class="mission-text">摧毀 2 棵蘑菇</span></div></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">培育 3 隻皮克敏</span></div></td>
+                                <td><span class="mission-text">摧毀 3 棵蘑菇</span></div></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 500 朵鸚鵡鬱金香</span></div></td>
+                                <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
+                                <td></td>
+                            </tr>
+                            <!-- Stage 3 -->
+                            <tr>
+                                <th rowspan="4" class="stage-header">第 3 階段</th>
+                                <td><div class="mission-item"><span class="mission-num">1</span><span class="mission-text">走 2000 步</span></div></td>
+                                <td><span class="mission-text">完成 2 個探險</span></div></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 1500 朵白色油菜花</span></div></td>
+                                <td><span class="mission-text">摧毀 3 棵蘑菇</span></div></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">種 1500 朵黃色油菜花</span></div></td>
+                                <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 1500 朵油菜花</span></div></td>
+                                <td><span class="mission-text">種 2000 朵紅色鸚鵡鬱金香</span></div></td>
+                                <td><span class="mission-text">摧毀 5 棵蘑菇</span></div></td>
+                            </tr>
+                            <!-- Stage 4 -->
+                            <tr>
+                                <th rowspan="4" class="stage-header">第 4 階段</th>
+                                <td><div class="mission-item"><span class="mission-num">1</span><span class="mission-text">完成 3 個探險</span></div></td>
+                                <td><span class="mission-text">摧毀 3 棵蘑菇</span></div></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 2000 朵白色鸚鵡鬱金香</span></div></td>
+                                <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">種 2000 朵黃色鸚鵡鬱金香</span></div></td>
+                                <td><span class="mission-text">種 1000 朵藍色油菜花</span></div></td>
+                                <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
+                            </tr>
+                            <tr>
+                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 2000 朵藍色鸚鵡鬱金香</span></div></td>
+                                <td><span class="mission-text">種 2500 朵油菜花</span></div></td>
+                                <td><span class="mission-text">摧毀 5 棵蘑菇</span></div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal" style="border-radius: 20px;">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

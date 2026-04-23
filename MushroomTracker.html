@@ -126,6 +126,110 @@
             box-shadow: 0 0 0 4px rgba(0,122,255,0.1);
         }
 
+        /* New Location Grid Styles */
+        .location-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .location-btn {
+            background: #fff;
+            border: 1px solid #d2d2d7;
+            border-radius: 10px;
+            padding: 10px 4px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 55px;
+            position: relative;
+        }
+
+        .location-btn .people-badge {
+            font-size: 0.75rem;
+            font-weight: 400;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
+        .location-btn:hover {
+            border-color: var(--accent-color);
+            background: #f5faff;
+        }
+
+        .location-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .location-btn .status-indicator {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 6px;
+            height: 6px;
+            margin: 0;
+        }
+
+        /* Active Input Panel Styles */
+        .active-input-panel {
+            background: #fbfbfd;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #e5e5e7;
+            margin-bottom: 15px;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .quick-people-btns {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .btn-quick {
+            background: #fff;
+            border: 1px solid #d2d2d7;
+            border-radius: 6px;
+            padding: 4px 0;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-quick:hover {
+            background: #eee;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .input-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            min-width: 40px;
+        }
+
         .display-section-container h2 {
             font-weight: 700;
             margin-bottom: 1.5rem;
@@ -328,14 +432,48 @@
         .mission-text {
             color: var(--text-main);
         }
+
+        /* Layout Swap CSS */
+        @media (min-width: 992px) {
+            .row.layout-swapped {
+                flex-direction: row-reverse;
+            }
+        }
+        
+        .btn-layout-toggle {
+            background: rgba(0,0,0,0.05);
+            border: none;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-layout-toggle:hover {
+            background: var(--accent-color);
+            color: white;
+        }
     </style>
 </head>
 <body>
 
 <div class="container-fluid">
-    <h1 class="header-title text-center">Pikmin Bloom Mushroom Tracker</h1>
+    <div class="header-container d-flex justify-content-center align-items-center position-relative py-3">
+        <h1 class="header-title m-0">Pikmin Bloom Mushroom Tracker</h1>
+        <div class="position-absolute end-0">
+            <button class="btn-layout-toggle" onclick="toggleLayout()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4M8 21l-4-4 4-4M20 7H4M4 17h16"/></svg>
+                切換左右佈局
+            </button>
+        </div>
+    </div>
     
-    <div class="row">
+    <div class="row" id="main-layout-row">
         <!-- Input Section -->
         <div class="col-lg-4">
             <div class="input-section">
@@ -401,6 +539,8 @@
     let mushrooms = {};
     let audioCtx = null;
     let isMuted = false;
+    let selectedLoc = null;
+    let isLayoutSwapped = false;
     
     function init() {
         locations.forEach(loc => {
@@ -422,6 +562,12 @@
             });
         }
         
+        const storedLayout = localStorage.getItem('mushroom_layout_swapped');
+        if (storedLayout === 'true') {
+            isLayoutSwapped = true;
+            document.getElementById('main-layout-row').classList.add('layout-swapped');
+        }
+
         renderInputList();
         setInterval(tick, 1000);
         
@@ -476,31 +622,92 @@
         const list = document.getElementById('input-list');
         list.innerHTML = '';
         
+        // 1. Render Grid
+        const grid = document.createElement('div');
+        grid.className = 'location-grid';
+        
         locations.forEach(loc => {
-            const group = document.createElement('div');
-            group.className = 'location-input-group';
+            const btn = document.createElement('div');
+            btn.id = `btn-${loc}`;
+            btn.className = `location-btn ${selectedLoc === loc ? 'active' : ''}`;
+            btn.onclick = () => selectLocation(loc);
             
-            group.innerHTML = `
-                <div class="location-name d-flex align-items-center" onclick="changePeople('${loc}', 5)" title="點擊增加 5 人">
-                    <span class="status-indicator" id="status-${loc}"></span>
-                    <span>${loc}</span>
-                </div>
-                <div class="people-control">
-                    <button class="btn-qty" onclick="changePeople('${loc}', -1)">-</button>
-                    <input type="text" class="form-control-custom px-1 text-center" placeholder="人" id="people-${loc}" 
-                        style="width: 40px; height: 32px; padding: 0;" maxlength="2"
-                        oninput="updatePeople('${loc}', this.value)"
-                        onkeydown="if(event.key === 'Enter') setMushroomTime('${loc}')">
-                    <button class="btn-qty" onclick="changePeople('${loc}', 1)">+</button>
-                </div>
-                <input type="text" class="form-control-custom" placeholder="時間" id="input-${loc}" 
-                    maxlength="6" style="height: 32px; font-size: 0.9rem; padding: 0 4px;"
-                    onkeydown="if(event.key === 'Enter') setMushroomTime('${loc}')">
-                <button class="btn-apple" style="padding: 6px 12px; font-size: 0.85rem;" onclick="setMushroomTime('${loc}')">設定</button>
-                <a class="reset-link" style="font-size: 0.7rem;" onclick="resetMushroom('${loc}')">重設</a>
+            const hasData = mushrooms[loc].targetTimestamp || mushrooms[loc].people > 0;
+            const peopleCount = mushrooms[loc].people;
+            
+            btn.innerHTML = `
+                <span class="status-indicator ${hasData ? 'active' : ''}" id="status-${loc}"></span>
+                <span class="btn-text">${loc}</span>
+                <span class="people-badge" id="btn-people-${loc}">${peopleCount > 0 ? peopleCount + ' 人' : ''}</span>
             `;
-            list.appendChild(group);
+            grid.appendChild(btn);
         });
+        list.appendChild(grid);
+
+        // 2. Render Input Panel if selected
+        if (selectedLoc) {
+            const panel = document.createElement('div');
+            panel.className = 'active-input-panel';
+            
+            panel.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="fs-6 m-0 fw-bold text-primary">📍 ${selectedLoc}</h3>
+                    <a class="reset-link" onclick="resetMushroom('${selectedLoc}')">重設此處</a>
+                </div>
+
+                <div class="quick-people-btns">
+                    <button class="btn-quick" onclick="quickSetPeople('${selectedLoc}', 5)">5人</button>
+                    <button class="btn-quick" onclick="quickSetPeople('${selectedLoc}', 10)">10人</button>
+                    <button class="btn-quick" onclick="quickSetPeople('${selectedLoc}', 15)">15人</button>
+                    <button class="btn-quick" onclick="quickSetPeople('${selectedLoc}', 20)">20人</button>
+                </div>
+
+                <div class="input-row">
+                    <span class="input-label">人數</span>
+                    <div class="people-control flex-grow-1">
+                        <button class="btn-qty flex-shrink-0" onclick="changePeople('${selectedLoc}', -1)">-</button>
+                        <input type="text" class="form-control-custom px-1 text-center flex-grow-1" placeholder="人" id="people-${selectedLoc}" 
+                            style="height: 36px;" maxlength="2"
+                            value="${mushrooms[selectedLoc].people || ''}"
+                            oninput="updatePeople('${selectedLoc}', this.value)">
+                        <button class="btn-qty flex-shrink-0" onclick="changePeople('${selectedLoc}', 1)">+</button>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <span class="input-label">時間</span>
+                    <input type="text" class="form-control-custom flex-grow-1" placeholder="範例: 5930 (59分30秒)" id="input-${selectedLoc}" 
+                        maxlength="6" style="height: 36px;"
+                        onkeydown="if(event.key === 'Enter') setMushroomTime('${selectedLoc}')">
+                </div>
+
+                <div class="d-grid mt-2">
+                    <button class="btn btn-primary" onclick="setMushroomTime('${selectedLoc}')" style="border-radius: 10px; padding: 10px; font-weight: 700;">設定倒數計時</button>
+                </div>
+            `;
+            list.appendChild(panel);
+            
+            // Focus time input after showing panel
+            setTimeout(() => {
+                const timeInput = document.getElementById(`input-${selectedLoc}`);
+                if (timeInput) timeInput.focus();
+            }, 50);
+        }
+    }
+
+    function selectLocation(loc) {
+        if (selectedLoc === loc) {
+            selectedLoc = null; // Toggle off
+        } else {
+            selectedLoc = loc;
+        }
+        renderInputList();
+    }
+
+    function quickSetPeople(loc, count) {
+        const pInput = document.getElementById(`people-${loc}`);
+        if (pInput) pInput.value = count;
+        updatePeople(loc, count);
     }
 
     function changePeople(loc, delta) {
@@ -535,10 +742,19 @@
         input.value = '';
         saveState();
         tick();
+        renderInputList();
     }
 
     function updatePeople(loc, val) {
-        mushrooms[loc].people = parseInt(val) || 0;
+        const count = parseInt(val) || 0;
+        mushrooms[loc].people = count;
+        
+        // Dynamically update the badge on the grid button without full re-render
+        const badge = document.getElementById(`btn-people-${loc}`);
+        if (badge) {
+            badge.textContent = count > 0 ? count + ' 人' : '';
+        }
+
         saveState();
         tick();
     }
@@ -549,6 +765,7 @@
         mushrooms[loc].people = 0;
         saveState();
         tick();
+        renderInputList();
     }
 
     function clearAllMushrooms() {
@@ -559,6 +776,7 @@
         });
         saveState();
         tick();
+        renderInputList();
     }
 
     function testCountdown() {
@@ -698,6 +916,17 @@
         initAudio(); // Ensure audioCtx is enabled when user interacts with this
         isMuted = !isMuted;
         updateAudioUI();
+    }
+
+    function toggleLayout() {
+        isLayoutSwapped = !isLayoutSwapped;
+        const row = document.getElementById('main-layout-row');
+        if (isLayoutSwapped) {
+            row.classList.add('layout-swapped');
+        } else {
+            row.classList.remove('layout-swapped');
+        }
+        localStorage.setItem('mushroom_layout_swapped', isLayoutSwapped);
     }
 
     window.onload = init;

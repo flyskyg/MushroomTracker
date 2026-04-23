@@ -48,7 +48,7 @@
         .input-section {
             background-color: var(--card-bg);
             border-radius: 18px;
-            padding: 1rem;
+            padding: 0.75rem 1rem;
             box-shadow: 0 8px 30px rgba(0,0,0,0.04);
             margin-bottom: 1rem;
             position: sticky;
@@ -57,14 +57,42 @@
 
         .location-input-group {
             display: grid;
-            grid-template-columns: 85px 65px 1fr auto auto;
+            grid-template-columns: 85px 105px 1fr auto auto;
             align-items: center;
             gap: 8px;
-            margin-bottom: 20px;
-            padding: 2px 10px;
+            margin-bottom: 8px;
+            padding: 4px 10px;
             border-radius: 8px;
             background: #fbfbfd;
             transition: transform 0.2s;
+        }
+
+        .people-control {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .btn-qty {
+            width: 30px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid #d2d2d7;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-main);
+        }
+        
+        .btn-qty:hover {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
         }
 
         .location-input-group:hover {
@@ -75,6 +103,12 @@
             font-weight: 600;
             color: var(--text-main);
             font-size: 0.95rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .location-name:hover {
+            color: var(--accent-color);
         }
 
         .form-control-custom {
@@ -358,7 +392,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.min.js"></script>
 <script>
-    const locations = ["心手相蓮", "噴水池", "翠亨閣", "放送頭", "大廳武士", "台北車站", "郵局", "城隍廟"];
+    const locations = ["痌瘝在抱", "心手相蓮",  "翠亨閣", "放送頭", "紀念碑",
+    "城隍廟", "城中消防", "新光三越", "台北車站", "噴水池", 
+    "北車南側", "大廳武士", "郵局", "立法院"];
     const ADD_TIME_SECONDS = 270; // 4 minutes 30 seconds 270
     
     // State
@@ -445,22 +481,34 @@
             group.className = 'location-input-group';
             
             group.innerHTML = `
-                <div class="location-name d-flex align-items-center">
+                <div class="location-name d-flex align-items-center" onclick="changePeople('${loc}', 5)" title="點擊增加 5 人">
                     <span class="status-indicator" id="status-${loc}"></span>
                     <span>${loc}</span>
                 </div>
-                <input type="text" class="form-control-custom px-1 text-center" placeholder="人數" id="people-${loc}" 
-                    style="width: 65px;" maxlength="2"
-                    oninput="updatePeople('${loc}', this.value)"
+                <div class="people-control">
+                    <button class="btn-qty" onclick="changePeople('${loc}', -1)">-</button>
+                    <input type="text" class="form-control-custom px-1 text-center" placeholder="人" id="people-${loc}" 
+                        style="width: 40px; height: 32px; padding: 0;" maxlength="2"
+                        oninput="updatePeople('${loc}', this.value)"
+                        onkeydown="if(event.key === 'Enter') setMushroomTime('${loc}')">
+                    <button class="btn-qty" onclick="changePeople('${loc}', 1)">+</button>
+                </div>
+                <input type="text" class="form-control-custom" placeholder="時間" id="input-${loc}" 
+                    maxlength="6" style="height: 32px; font-size: 0.9rem; padding: 0 4px;"
                     onkeydown="if(event.key === 'Enter') setMushroomTime('${loc}')">
-                <input type="text" class="form-control-custom" placeholder="HHMMSS" id="input-${loc}" 
-                    maxlength="6"
-                    onkeydown="if(event.key === 'Enter') setMushroomTime('${loc}')">
-                <button class="btn-apple" onclick="setMushroomTime('${loc}')">設定</button>
-                <a class="reset-link" onclick="resetMushroom('${loc}')">重設</a>
+                <button class="btn-apple" style="padding: 6px 12px; font-size: 0.85rem;" onclick="setMushroomTime('${loc}')">設定</button>
+                <a class="reset-link" style="font-size: 0.7rem;" onclick="resetMushroom('${loc}')">重設</a>
             `;
             list.appendChild(group);
         });
+    }
+
+    function changePeople(loc, delta) {
+        const pInput = document.getElementById(`people-${loc}`);
+        let val = parseInt(pInput.value) || 0;
+        val = Math.max(0, val + delta);
+        pInput.value = val;
+        updatePeople(loc, val);
     }
 
     function setMushroomTime(loc) {

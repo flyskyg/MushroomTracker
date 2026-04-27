@@ -74,15 +74,15 @@
         }
         
         .btn-qty {
-            width: 30px;
-            height: 32px;
-            border-radius: 6px;
+            width: 80px;
+            height: 42px;
+            border-radius: 8px;
             border: 1px solid #d2d2d7;
             background: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 20px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.2s;
@@ -458,6 +458,25 @@
             background: var(--accent-color);
             color: white;
         }
+
+        .btn-share-url {
+            background: rgba(52, 199, 89, 0.12);
+            border: none;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--success-color);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-share-url:hover {
+            background: var(--success-color);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -465,7 +484,11 @@
 <div class="container-fluid">
     <div class="header-container d-flex justify-content-center align-items-center position-relative py-3">
         <h1 class="header-title m-0">Pikmin Bloom Mushroom Tracker</h1>
-        <div class="position-absolute end-0">
+        <div class="position-absolute end-0 d-flex gap-2">
+            <button class="btn-share-url" onclick="showShareURL()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                分享連結
+            </button>
             <button class="btn-layout-toggle" onclick="toggleLayout()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4M8 21l-4-4 4-4M20 7H4M4 17h16"/></svg>
                 切換左右佈局
@@ -550,18 +573,25 @@
                 people: 0
             };
         });
-        
-        const stored = localStorage.getItem('mushroom_countdowns_v2');
-        if (stored) {
-            const data = JSON.parse(stored);
-            Object.keys(data).forEach(key => {
-                if (mushrooms[key]) {
-                    mushrooms[key].targetTimestamp = data[key].targetTimestamp;
-                    mushrooms[key].people = data[key].people || 0;
-                }
-            });
+
+        const loadedFromURL = decodeStateFromURL();
+
+        if (!loadedFromURL) {
+            const stored = localStorage.getItem('mushroom_countdowns_v2');
+            if (stored) {
+                const data = JSON.parse(stored);
+                Object.keys(data).forEach(key => {
+                    if (mushrooms[key]) {
+                        mushrooms[key].targetTimestamp = data[key].targetTimestamp;
+                        mushrooms[key].people = data[key].people || 0;
+                    }
+                });
+            }
+        } else {
+            saveState();
+            showURLLoadedBanner();
         }
-        
+
         const storedLayout = localStorage.getItem('mushroom_layout_swapped');
         if (storedLayout === 'true') {
             isLayoutSwapped = true;
@@ -570,9 +600,100 @@
 
         renderInputList();
         setInterval(tick, 1000);
-        
+
         // Resume AudioContext on first interaction
         document.body.addEventListener('click', initAudio, { once: false });
+    }
+
+    function encodeShareState() {
+        const data = {};
+        locations.forEach(loc => {
+            const m = mushrooms[loc];
+            if (m.targetTimestamp || m.people > 0) {
+                data[loc] = {};
+                if (m.targetTimestamp) data[loc].t = m.targetTimestamp;
+                if (m.people > 0) data[loc].p = m.people;
+            }
+        });
+        const json = JSON.stringify({ v: 1, d: data });
+        return btoa(unescape(encodeURIComponent(json)));
+    }
+
+    function decodeStateFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const encoded = params.get('s');
+        if (!encoded) return false;
+        try {
+            const json = decodeURIComponent(escape(atob(encoded)));
+            const parsed = JSON.parse(json);
+            if (parsed.v !== 1 || !parsed.d) return false;
+            Object.keys(parsed.d).forEach(loc => {
+                if (mushrooms[loc]) {
+                    const entry = parsed.d[loc];
+                    if (entry.t) mushrooms[loc].targetTimestamp = entry.t;
+                    if (entry.p) mushrooms[loc].people = entry.p;
+                }
+            });
+            return true;
+        } catch (e) {
+            console.error('Failed to decode share URL', e);
+            return false;
+        }
+    }
+
+    function showURLLoadedBanner() {
+        const banner = document.createElement('div');
+        banner.className = 'alert alert-success alert-dismissible fade show mx-2 mt-2';
+        banner.style.cssText = 'border-radius: 12px; font-size: 0.9rem; transition: opacity 0.5s;';
+        banner.innerHTML = '<strong>📎 已從分享連結載入</strong>，倒數計時已同步。<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        const container = document.querySelector('.container-fluid');
+        container.insertBefore(banner, container.firstChild);
+        setTimeout(() => {
+            banner.classList.remove('show');
+            setTimeout(() => banner.remove(), 500);
+        }, 5000);
+    }
+
+    function showShareURL() {
+        const encoded = encodeShareState();
+        const url = new URL(window.location.href);
+        url.search = '';
+        url.searchParams.set('s', encoded);
+        document.getElementById('share-url-input').value = url.toString();
+        const btn = document.getElementById('copy-share-btn');
+        btn.textContent = '複製連結';
+        btn.className = 'btn btn-success';
+        const modal = new bootstrap.Modal(document.getElementById('shareModal'));
+        modal.show();
+        setTimeout(() => {
+            const input = document.getElementById('share-url-input');
+            if (input) input.select();
+        }, 300);
+    }
+
+    function copyShareURL() {
+        const input = document.getElementById('share-url-input');
+        const btn = document.getElementById('copy-share-btn');
+        const text = input.value;
+        const markCopied = () => {
+            btn.textContent = '✓ 已複製！';
+            btn.className = 'btn btn-secondary';
+            setTimeout(() => {
+                btn.textContent = '複製連結';
+                btn.className = 'btn btn-success';
+            }, 2000);
+        };
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(markCopied).catch(() => {
+                input.select();
+                document.execCommand('copy');
+                markCopied();
+            });
+        } else {
+            input.select();
+            document.execCommand('copy');
+            markCopied();
+        }
     }
 
     function initAudio() {
@@ -665,12 +786,13 @@
                 <div class="input-row">
                     <span class="input-label">人數</span>
                     <div class="people-control flex-grow-1">
+                        <button class="btn-qty flex-shrink-0" onclick="changePeople('${selectedLoc}', 1)">+</button>
                         <button class="btn-qty flex-shrink-0" onclick="changePeople('${selectedLoc}', -1)">-</button>
-                        <input type="text" class="form-control-custom px-1 text-center flex-grow-1" placeholder="人" id="people-${selectedLoc}" 
+                        <input type="text" class="form-control-custom px-1 text-center flex-grow-1" placeholder="人" id="people-${selectedLoc}"
                             style="height: 36px;" maxlength="2"
                             value="${mushrooms[selectedLoc].people || ''}"
-                            oninput="updatePeople('${selectedLoc}', this.value)">
-                        <button class="btn-qty flex-shrink-0" onclick="changePeople('${selectedLoc}', 1)">+</button>
+                            oninput="updatePeople('${selectedLoc}', this.value)"
+                            onblur="focusTimeInput('${selectedLoc}')">
                     </div>
                 </div>
 
@@ -704,10 +826,16 @@
         renderInputList();
     }
 
+    function focusTimeInput(loc) {
+        const timeInput = document.getElementById(`input-${loc}`);
+        if (timeInput) timeInput.focus();
+    }
+
     function quickSetPeople(loc, count) {
         const pInput = document.getElementById(`people-${loc}`);
         if (pInput) pInput.value = count;
         updatePeople(loc, count);
+        focusTimeInput(loc);
     }
 
     function changePeople(loc, delta) {
@@ -716,6 +844,7 @@
         val = Math.max(0, val + delta);
         pInput.value = val;
         updatePeople(loc, val);
+        focusTimeInput(loc);
     }
 
     function setMushroomTime(loc) {
@@ -932,6 +1061,28 @@
     window.onload = init;
 </script>
 
+
+<!-- Share URL Modal -->
+<div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="shareModalLabel">📎 分享倒數連結</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body px-4 pb-2">
+                <p class="text-muted small mb-3">複製連結分享給隊友，對方開啟後會看到相同的倒數計時（時間以絕對時間戳計算，不受時區影響）。</p>
+                <div class="input-group">
+                    <input type="text" id="share-url-input" class="form-control" readonly style="font-size: 0.8rem; border-radius: 10px 0 0 10px;">
+                    <button id="copy-share-btn" class="btn btn-success" onclick="copyShareURL()" style="border-radius: 0 10px 10px 0; font-weight: 600; white-space: nowrap;">複製連結</button>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal" style="border-radius: 20px;">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Mission Modal -->
 <div class="modal fade" id="missionModal" tabindex="-1" aria-labelledby="missionModalLabel" aria-hidden="true">

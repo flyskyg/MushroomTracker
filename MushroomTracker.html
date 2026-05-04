@@ -311,6 +311,11 @@
 
         .timer-card.finished .location-title { color: rgba(255,255,255,0.8); }
         .timer-card.finished .countdown-value { color: #fff; }
+        .timer-card.selected-card {
+            border-color: var(--accent-color);
+            background-color: #f0f7ff;
+            box-shadow: 0 0 0 4px rgba(0,122,255,0.1);
+        }
 
         @keyframes pulse-danger {
             from { background-color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
@@ -556,7 +561,7 @@
     const locations = ["痌瘝在抱", "心手相蓮",  "翠亨閣", "放送頭", "紀念碑",
     "城隍廟", "城中消防", "新光三越", "台北車站", "噴水池", 
     "北車南側", "大廳武士", "郵局", "立法院"];
-    const ADD_TIME_SECONDS = 270; // 4 minutes 30 seconds 270
+    const ADD_TIME_SECONDS = 30; // 30 seconds
     
     // State
     let mushrooms = {};
@@ -902,6 +907,7 @@
         locations.forEach(loc => {
             mushrooms[loc].targetTimestamp = null;
             mushrooms[loc].alerted = false;
+            mushrooms[loc].people = 0;
         });
         saveState();
         tick();
@@ -931,16 +937,20 @@
         let activeMushrooms = [];
         locations.forEach(loc => {
             const indicator = document.getElementById(`status-${loc}`);
-            if (mushrooms[loc].targetTimestamp || mushrooms[loc].people > 0) {
+            const hasData = mushrooms[loc].targetTimestamp || mushrooms[loc].people > 0;
+            if (hasData) {
                 if (indicator) indicator.classList.add('active');
+            } else {
+                if (indicator) indicator.classList.remove('active');
+            }
+            
+            if (hasData || loc === selectedLoc) {
                 const diff = mushrooms[loc].targetTimestamp ? mushrooms[loc].targetTimestamp - now : null;
                 activeMushrooms.push({
                     name: loc,
                     diff: diff,
                     people: mushrooms[loc].people
                 });
-            } else {
-                if (indicator) indicator.classList.remove('active');
             }
         });
 
@@ -959,30 +969,41 @@
         }
 
         activeMushrooms.forEach(item => {
-            const isFinished = item.diff <= 0;
-            const absSeconds = Math.floor(Math.abs(item.diff) / 1000);
+            const isFinished = item.diff !== null && item.diff <= 0;
+            const absSeconds = item.diff !== null ? Math.floor(Math.abs(item.diff) / 1000) : 0;
+            const isSelected = item.name === selectedLoc;
             
-            const isPanicking = !isFinished && absSeconds < 60;
+            const isPanicking = item.diff !== null && !isFinished && absSeconds < 60;
             
             const h = Math.floor(absSeconds / 3600);
             const m = Math.floor((absSeconds % 3600) / 60);
             const s = absSeconds % 60;
             const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
-            const battleSecondsLeft = Math.max(0, Math.floor(item.diff / 1000) - ADD_TIME_SECONDS);
+            const battleSecondsLeft = item.diff !== null ? Math.max(0, Math.floor(item.diff / 1000) - ADD_TIME_SECONDS) : 0;
             const bh = Math.floor(battleSecondsLeft / 3600);
             const bm = Math.floor((battleSecondsLeft % 3600) / 60);
             const bs = battleSecondsLeft % 60;
             const battleTimeStr = `${bh.toString().padStart(2, '0')}:${bm.toString().padStart(2, '0')}:${bs.toString().padStart(2, '0')}`;
 
             const card = document.createElement('div');
-            card.className = `timer-card ${isPanicking ? 'near-zero' : ''} ${isFinished ? 'finished' : ''}`;
+            card.className = `timer-card ${isPanicking ? 'near-zero' : ''} ${isFinished ? 'finished' : ''} ${isSelected ? 'selected-card' : ''}`;
             
+            let actualTimeHtml = '';
+            if (item.diff !== null) {
+                const d = new Date(mushrooms[item.name].targetTimestamp);
+                const hh = d.getHours().toString().padStart(2, '0');
+                const mm = d.getMinutes().toString().padStart(2, '0');
+                const ss = d.getSeconds().toString().padStart(2, '0');
+                actualTimeHtml = `<span class="badge rounded-pill text-primary border border-primary fw-normal" style="font-size: 0.75rem; padding: 0.35em 0.65em; background-color: #f0f7ff;"> ${hh}:${mm}:${ss}</span>`;
+            }
+
             card.innerHTML = `
                 <button class="close-card" title="刪除倒數" onclick="resetMushroom('${item.name}')">✕</button>
                 <div class="location-title d-flex align-items-center gap-2">
                     <span>${item.name}</span>
                     ${item.people > 0 ? `<span class="badge rounded-pill bg-light text-dark border fw-normal" style="font-size: 0.7rem; padding: 0.35em 0.65em;">${item.people} 人</span>` : ''}
+                    ${actualTimeHtml}
                 </div>
                 ${item.diff !== null ? `
                     ${!isFinished ? `
@@ -1089,7 +1110,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold" id="missionModalLabel" style="font-size: 1.25rem;">🌸 皮克敏每月任務(四月)</h5>
+                <h5 class="modal-title fw-bold" id="missionModalLabel" style="font-size: 1.25rem;">🌸 皮克敏每月任務(五月)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
@@ -1145,7 +1166,7 @@
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 500 朵鸚鵡鬱金香</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 500 朵勿忘草</span></div></td>
                                 <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
                                 <td></td>
                             </tr>
@@ -1157,18 +1178,18 @@
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 1500 朵白色油菜花</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 1500 朵白色紀念玫瑰</span></div></td>
                                 <td><span class="mission-text">摧毀 3 棵蘑菇</span></div></td>
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">種 1500 朵黃色油菜花</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">種 1500 朵黃色紀念玫瑰</span></div></td>
                                 <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 1500 朵油菜花</span></div></td>
-                                <td><span class="mission-text">種 2000 朵紅色鸚鵡鬱金香</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 1500 朵紀念玫瑰</span></div></td>
+                                <td><span class="mission-text">種 2000 朵紅色勿忘草</span></div></td>
                                 <td><span class="mission-text">摧毀 5 棵蘑菇</span></div></td>
                             </tr>
                             <!-- Stage 4 -->
@@ -1179,18 +1200,18 @@
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 2000 朵白色鸚鵡鬱金香</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 2000 朵白色勿忘草</span></div></td>
                                 <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">種 2000 朵黃色鸚鵡鬱金香</span></div></td>
-                                <td><span class="mission-text">種 1000 朵藍色油菜花</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">種 2000 朵黃色勿忘草</span></div></td>
+                                <td><span class="mission-text">種 1000 朵藍色紀念玫瑰</span></div></td>
                                 <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 2000 朵藍色鸚鵡鬱金香</span></div></td>
-                                <td><span class="mission-text">種 2500 朵油菜花</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 2000 朵藍色勿忘草</span></div></td>
+                                <td><span class="mission-text">種 2500 朵紀念玫瑰</span></div></td>
                                 <td><span class="mission-text">摧毀 5 棵蘑菇</span></div></td>
                             </tr>
                         </tbody>

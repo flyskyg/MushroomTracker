@@ -991,7 +991,8 @@
             
             let actualTimeHtml = '';
             if (item.diff !== null) {
-                const d = new Date(mushrooms[item.name].targetTimestamp);
+                const displayTimestamp = mushrooms[item.name].targetTimestamp - (ADD_TIME_SECONDS * 1000) + (300 * 1000);
+                const d = new Date(displayTimestamp);
                 const hh = d.getHours().toString().padStart(2, '0');
                 const mm = d.getMinutes().toString().padStart(2, '0');
                 const ss = d.getSeconds().toString().padStart(2, '0');

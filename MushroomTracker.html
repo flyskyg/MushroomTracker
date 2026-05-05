@@ -557,6 +557,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
 <script>
     const locations = [
         "台北車站", "北車南側", "大廳武士",
@@ -616,6 +617,91 @@
         document.body.addEventListener('click', initAudio, { once: false });
     }
 
+    function encodeData(data) {
+        if (!data || !data.d) return "";
+        
+        // 步驟一：尋找基準時間 baseTime
+        let minT = Infinity;
+        for (const loc in data.d) {
+            if (data.d[loc].t) {
+                minT = Math.min(minT, data.d[loc].t);
+            }
+        }
+        
+        const baseTime = minT === Infinity ? 0 : Math.floor(minT / 1000);
+        
+        // 步驟二與步驟三：結構優化與組裝
+        const newData = {
+            v: 1,
+            b: baseTime,
+            d: {}
+        };
+        
+        for (const loc in data.d) {
+            const item = data.d[loc];
+            const timestamp = item.t;
+            const points = item.p || 0;
+            
+            const timeDiff = timestamp ? Math.floor(timestamp / 1000) - baseTime : null;
+            
+            // 使用數字 index 作為 key（如果找不到則保留原名稱）
+            const locIndex = locations.indexOf(loc);
+            const keyToUse = locIndex !== -1 ? locIndex : loc;
+            
+            newData.d[keyToUse] = [timeDiff, points];
+        }
+        
+        // 步驟四：lz-string 壓縮
+        const jsonString = JSON.stringify(newData);
+        return LZString.compressToEncodedURIComponent(jsonString);
+    }
+
+    function decodeData(encodedStr) {
+        if (!encodedStr) return null;
+        try {
+            const jsonString = LZString.decompressFromEncodedURIComponent(encodedStr);
+            if (!jsonString) return null;
+            
+            const parsed = JSON.parse(jsonString);
+            if (!parsed || parsed.v !== 1 || parsed.b === undefined || !parsed.d) return null;
+            
+            const baseTime = parsed.b;
+            const originalData = {
+                v: 1,
+                d: {}
+            };
+            
+            // 讀取 b (baseTime)，還原 d
+            for (const key in parsed.d) {
+                const arr = parsed.d[key];
+                const timeDiff = arr[0];
+                const points = arr[1];
+                
+                const item = {};
+                if (timeDiff !== null) {
+                    item.t = (baseTime + timeDiff) * 1000;
+                }
+                if (points) {
+                    item.p = points;
+                }
+                
+                // 判斷 key 是否為數字 index，是的話還原成地名
+                const idx = parseInt(key, 10);
+                let locName = key;
+                if (!isNaN(idx) && idx.toString() === key && locations[idx]) {
+                    locName = locations[idx];
+                }
+                
+                originalData.d[locName] = item;
+            }
+            
+            return originalData;
+        } catch (e) {
+            console.error("Decode error:", e);
+            return null;
+        }
+    }
+
     function encodeShareState() {
         const data = {};
         locations.forEach(loc => {
@@ -627,30 +713,26 @@
                 if (m.people > 0) data[loc].p = m.people;
             }
         });
-        const json = JSON.stringify({ v: 1, d: data });
-        return btoa(unescape(encodeURIComponent(json)));
+        
+        return encodeData({ v: 1, d: data });
     }
 
     function decodeStateFromURL() {
         const params = new URLSearchParams(window.location.search);
         const encoded = params.get('s');
         if (!encoded) return false;
-        try {
-            const json = decodeURIComponent(escape(atob(encoded)));
-            const parsed = JSON.parse(json);
-            if (parsed.v !== 1 || !parsed.d) return false;
-            Object.keys(parsed.d).forEach(loc => {
-                if (mushrooms[loc]) {
-                    const entry = parsed.d[loc];
-                    if (entry.t) mushrooms[loc].targetTimestamp = entry.t;
-                    if (entry.p) mushrooms[loc].people = entry.p;
-                }
-            });
-            return true;
-        } catch (e) {
-            console.error('Failed to decode share URL', e);
-            return false;
-        }
+        
+        const parsed = decodeData(encoded);
+        if (!parsed || parsed.v !== 1 || !parsed.d) return false;
+        
+        Object.keys(parsed.d).forEach(loc => {
+            if (mushrooms[loc]) {
+                const entry = parsed.d[loc];
+                if (entry.t) mushrooms[loc].targetTimestamp = entry.t;
+                if (entry.p) mushrooms[loc].people = entry.p;
+            }
+        });
+        return true;
     }
 
     function showURLLoadedBanner() {

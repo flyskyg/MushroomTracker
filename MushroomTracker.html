@@ -525,15 +525,21 @@
                     <!-- Javascript will populate this -->
                 </div>
 
-                <div class="audio-status text-muted mb-2 mt-3 d-flex align-items-center justify-content-between px-1" style="font-size: 0.75rem;">
-                    <div class="d-flex align-items-center gap-2">                        
-                        <button class="btn btn-link btn-sm p-0 text-decoration-none fw-bold" data-bs-toggle="modal" data-bs-target="#missionModal" style="color: var(--accent-color); font-size: 0.8rem;">[每月任務]</button>
+                <div class="audio-status text-muted mb-2 mt-3 d-flex flex-column gap-2 px-1" style="font-size: 0.75rem;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">                        
+                            <button class="btn btn-link btn-sm p-0 text-decoration-none fw-bold" data-bs-toggle="modal" data-bs-target="#missionModal" style="color: var(--accent-color); font-size: 0.8rem;">[每月任務]</button>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span id="audio-indicator" class="badge bg-secondary">音效未啟動</span>
+                            <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="playAlertSound(true)">測試音效</button>
+                            <span class="text-light-subtle">|</span>
+                            <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="testCountdown()">測試倒數 (10s)</button>
+                        </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <span id="audio-indicator" class="badge bg-secondary">音效未啟動</span>
-                        <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="playAlertSound(true)">測試音效</button>
-                        <span class="text-light-subtle">|</span>
-                        <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="testCountdown()">測試倒數 (10s)</button>
+                    <div class="d-flex align-items-center justify-content-end gap-2">
+                        <span id="notification-indicator" class="badge bg-secondary">通知未授權</span>
+                        <button id="enable-notification-btn" class="btn btn-link btn-sm p-0 text-decoration-none" onclick="requestNotificationPermission()">啟用通知</button>
                     </div>
                 </div>
             </div>
@@ -582,6 +588,7 @@
             mushrooms[loc] = {
                 targetTimestamp: null,
                 alerted: false,
+                notified30s: false,
                 people: 0
             };
         });
@@ -596,6 +603,7 @@
                     if (mushrooms[key]) {
                         mushrooms[key].targetTimestamp = data[key].targetTimestamp;
                         mushrooms[key].people = data[key].people || 0;
+                        mushrooms[key].notified30s = data[key].notified30s || false;
                     }
                 });
             }
@@ -611,6 +619,7 @@
         }
 
         renderInputList();
+        updateNotificationUI();
         setInterval(tick, 1000);
 
         // Resume AudioContext on first interaction
@@ -728,7 +737,10 @@
         Object.keys(parsed.d).forEach(loc => {
             if (mushrooms[loc]) {
                 const entry = parsed.d[loc];
-                if (entry.t) mushrooms[loc].targetTimestamp = entry.t;
+                if (entry.t) {
+                    mushrooms[loc].targetTimestamp = entry.t;
+                    mushrooms[loc].notified30s = false;
+                }
                 if (entry.p) mushrooms[loc].people = entry.p;
             }
         });
@@ -964,6 +976,7 @@
         
         mushrooms[loc].targetTimestamp = target;
         mushrooms[loc].alerted = false;
+        mushrooms[loc].notified30s = false;
         mushrooms[loc].people = parseInt(pInput.value) || 0;
         
         input.value = '';
@@ -989,6 +1002,7 @@
     function resetMushroom(loc) {
         mushrooms[loc].targetTimestamp = null;
         mushrooms[loc].alerted = false;
+        mushrooms[loc].notified30s = false;
         mushrooms[loc].people = 0;
         saveState();
         tick();
@@ -1001,6 +1015,7 @@
             if (!loc) return;
             mushrooms[loc].targetTimestamp = null;
             mushrooms[loc].alerted = false;
+            mushrooms[loc].notified30s = false;
             mushrooms[loc].people = 0;
         });
         saveState();
@@ -1016,6 +1031,7 @@
         
         mushrooms[randomLoc].targetTimestamp = target;
         mushrooms[randomLoc].alerted = false;
+        mushrooms[randomLoc].notified30s = false;
         
         saveState();
         tick();
@@ -1121,9 +1137,43 @@
             `;
             display.appendChild(card);
             
+            // Web Notification 提醒 (剩餘 30 秒時)
+            if (item.diff !== null && !isFinished) {
+                const secondsLeft = Math.floor(item.diff / 1000);
+                if (secondsLeft <= 30 && secondsLeft > 0 && !mushrooms[item.name].notified30s) {
+                    mushrooms[item.name].notified30s = true;
+                    saveState();
+                    if ("Notification" in window && Notification.permission === "granted") {
+                        const n = new Notification(`🍄 蘑菇即將重生 (${item.name})`, {
+                            body: `📍 ${item.name} 倒數剩餘 30 秒，請準備！${item.people > 0 ? `(現有 ${item.people} 人)` : ''}`,
+                            tag: `mushroom-alert-${item.name}`,
+                            requireInteraction: true
+                        });
+                        n.onclick = function() {
+                            window.focus();
+                            this.close();
+                        };
+                    }
+                }
+            }
+
             if (isFinished && !mushrooms[item.name].alerted) {
                 playAlertSound();
                 mushrooms[item.name].alerted = true;
+                saveState();
+                
+                // 也送出重生通知
+                if ("Notification" in window && Notification.permission === "granted") {
+                    const n = new Notification(`🌸 蘑菇已重生！(${item.name})`, {
+                        body: `📍 ${item.name} 已經重生了！`,
+                        tag: `mushroom-spawn-${item.name}`,
+                        requireInteraction: true
+                    });
+                    n.onclick = function() {
+                        window.focus();
+                        this.close();
+                    };
+                }
             }
         });
     }
@@ -1176,6 +1226,48 @@
         localStorage.setItem('mushroom_layout_swapped', isLayoutSwapped);
     }
 
+    function updateNotificationUI() {
+        const indicator = document.getElementById('notification-indicator');
+        const btn = document.getElementById('enable-notification-btn');
+        if (!indicator || !btn) return;
+
+        if (!("Notification" in window)) {
+            indicator.textContent = '不支援瀏覽器通知';
+            indicator.className = 'badge bg-danger';
+            btn.style.display = 'none';
+            return;
+        }
+
+        if (Notification.permission === 'granted') {
+            indicator.textContent = '通知已就緒';
+            indicator.className = 'badge bg-success';
+            btn.style.display = 'none';
+        } else if (Notification.permission === 'denied') {
+            indicator.textContent = '通知被拒絕';
+            indicator.className = 'badge bg-danger';
+            btn.textContent = '如何重設';
+            btn.onclick = () => alert('請在瀏覽器網址列旁的安全鎖圖示中，手動允許此網頁的通知權限。');
+        } else {
+            indicator.textContent = '通知未啟動';
+            indicator.className = 'badge bg-secondary';
+            btn.textContent = '啟用通知';
+            btn.onclick = requestNotificationPermission;
+        }
+    }
+
+    function requestNotificationPermission() {
+        if (!("Notification" in window)) return;
+        Notification.requestPermission().then(permission => {
+            updateNotificationUI();
+            if (permission === 'granted') {
+                new Notification("Pikmin Bloom 蘑菇計時器", {
+                    body: "系統通知功能已成功啟用！當倒數剩餘 30 秒時將會在此提醒您。",
+                    requireInteraction: true
+                });
+            }
+        });
+    }
+
     window.onload = init;
 </script>
 
@@ -1207,7 +1299,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold" id="missionModalLabel" style="font-size: 1.25rem;">🌸 皮克敏每月任務(五月)</h5>
+                <h5 class="modal-title fw-bold" id="missionModalLabel" style="font-size: 1.25rem;">🌸 皮克敏每月任務(六月)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
@@ -1263,7 +1355,7 @@
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 500 朵勿忘草</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 500 朵風鈴草</span></div></td>
                                 <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
                                 <td></td>
                             </tr>
@@ -1275,18 +1367,18 @@
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 1500 朵白色紀念玫瑰</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 1500 朵白色鳶尾花</span></div></td>
                                 <td><span class="mission-text">摧毀 3 棵蘑菇</span></div></td>
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">種 1500 朵黃色紀念玫瑰</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">種 1500 朵黃色鳶尾花</span></div></td>
                                 <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 1500 朵紀念玫瑰</span></div></td>
-                                <td><span class="mission-text">種 2000 朵紅色勿忘草</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 1500 朵黃色鳶尾花</span></div></td>
+                                <td><span class="mission-text">種 2000 朵紅色風鈴草</span></div></td>
                                 <td><span class="mission-text">摧毀 5 棵蘑菇</span></div></td>
                             </tr>
                             <!-- Stage 4 -->
@@ -1297,18 +1389,18 @@
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 2000 朵白色勿忘草</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">2</span><span class="mission-text">種 2000 朵白色風鈴草</span></div></td>
                                 <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
                                 <td></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">種 2000 朵黃色勿忘草</span></div></td>
-                                <td><span class="mission-text">種 1000 朵藍色紀念玫瑰</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">3</span><span class="mission-text">種 2000 朵黃色風鈴草</span></div></td>
+                                <td><span class="mission-text">種 1000 朵藍色鳶尾花</span></div></td>
                                 <td><span class="mission-text">摧毀 4 棵蘑菇</span></div></td>
                             </tr>
                             <tr>
-                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 2000 朵藍色勿忘草</span></div></td>
-                                <td><span class="mission-text">種 2500 朵紀念玫瑰</span></div></td>
+                                <td><div class="mission-item"><span class="mission-num">4</span><span class="mission-text">種 2000 朵藍色風鈴草</span></div></td>
+                                <td><span class="mission-text">種 2500 朵鳶尾花</span></div></td>
                                 <td><span class="mission-text">摧毀 5 棵蘑菇</span></div></td>
                             </tr>
                         </tbody>
